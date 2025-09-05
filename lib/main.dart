@@ -1,12 +1,29 @@
-import 'package:flutter/material.dart';
+coimport 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
+import 'package:provider/provider.dart';
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'screens/overview_screen.dart';
 import 'screens/expenses_screen.dart';
 import 'screens/budgets_screen.dart';
 import 'screens/insights_screen.dart';
 import 'widgets/app_header.dart';
 import 'widgets/bottom_navigation.dart';
+import 'providers/budget_provider.dart';
+import 'services/supabase_service.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  // Initialize sqflite for desktop platforms
+  if (!kIsWeb && (defaultTargetPlatform == TargetPlatform.windows || 
+      defaultTargetPlatform == TargetPlatform.linux || 
+      defaultTargetPlatform == TargetPlatform.macOS)) {
+    sqfliteFfiInit();
+    databaseFactory = databaseFactoryFfi;
+    print('SQLite FFI initialized for desktop platform');
+  }
+  
+  await SupabaseService.initialize();
   runApp(const BudgetsApp());
 }
 
@@ -16,22 +33,25 @@ class BudgetsApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final Color seed = const Color(0xFF0CAF60); // fresh financial green
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      title: 'E-Pon',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: seed,
-          brightness: Brightness.light,
+    return ChangeNotifierProvider(
+      create: (context) => BudgetProvider()..initialize(),
+      child: MaterialApp(
+        debugShowCheckedModeBanner: false,
+        title: 'E-Pon',
+        theme: ThemeData(
+          colorScheme: ColorScheme.fromSeed(
+            seedColor: seed,
+            brightness: Brightness.light,
+          ),
+          scaffoldBackgroundColor: Colors.white,
+          useMaterial3: true,
+          textTheme: Theme.of(context).textTheme.apply(
+            displayColor: Colors.black87,
+            bodyColor: Colors.black87,
+          ),
         ),
-        scaffoldBackgroundColor: Colors.white,
-        useMaterial3: true,
-        textTheme: Theme.of(context).textTheme.apply(
-          displayColor: Colors.black87,
-          bodyColor: Colors.black87,
-        ),
+        home: const BudgetsHomeScreen(),
       ),
-      home: const BudgetsHomeScreen(),
     );
   }
 }
