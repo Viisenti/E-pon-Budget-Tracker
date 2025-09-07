@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/budget_provider.dart';
-import '../widgets/add_expense_dialog.dart';
+import '../widgets/add_expense_bottom_sheet.dart';
 
 class OverviewScreen extends StatelessWidget {
   const OverviewScreen({super.key});
@@ -199,9 +199,11 @@ class _QuickActionsSection extends StatelessWidget {
   }
 
   void _showAddExpenseDialog(BuildContext context, String? categoryId) {
-    showDialog(
+    showModalBottomSheet(
       context: context,
-      builder: (context) => AddExpenseDialog(preselectedCategoryId: categoryId),
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => AddExpenseBottomSheet(preselectedCategoryId: categoryId),
     );
   }
 

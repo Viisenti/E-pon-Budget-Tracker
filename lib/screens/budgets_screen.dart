@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/budget_provider.dart';
-import '../widgets/add_budget_dialog.dart';
+import '../widgets/add_budget_bottom_sheet.dart';
 
 class BudgetsScreen extends StatelessWidget {
   const BudgetsScreen({super.key});
@@ -146,9 +146,11 @@ class _BudgetSummarySection extends StatelessWidget {
   }
 
   void _showAddBudgetDialog(BuildContext context) {
-    showDialog(
+    showModalBottomSheet(
       context: context,
-      builder: (context) => const AddBudgetDialog(),
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => const AddBudgetBottomSheet(),
     );
   }
 }
@@ -299,9 +301,11 @@ class _BudgetCategoriesSection extends StatelessWidget {
   }
 
   void _showEditBudgetDialog(BuildContext context, budget) {
-    showDialog(
+    showModalBottomSheet(
       context: context,
-      builder: (context) => AddBudgetDialog(budget: budget),
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => AddBudgetBottomSheet(budget: budget),
     );
   }
 

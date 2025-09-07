@@ -124,6 +124,20 @@ class BudgetProvider with ChangeNotifier {
 
   Future<void> deleteBudget(String budgetId) async {
     try {
+      // Find the budget to be deleted
+      final budgetToDelete = _budgets.where((b) => b.budgetId == budgetId);
+      if (budgetToDelete.isEmpty) return;
+      
+      final budget = budgetToDelete.first;
+      
+      // Delete all expenses associated with this budget's category
+      final expensesToDelete = _expenses.where((e) => e.categoryId == budget.categoryId).toList();
+      for (final expense in expensesToDelete) {
+        await _syncService.deleteExpense(expense.expenseId);
+        _expenses.removeWhere((e) => e.expenseId == expense.expenseId);
+      }
+      
+      // Delete the budget
       await _syncService.deleteBudget(budgetId);
       _budgets.removeWhere((b) => b.budgetId == budgetId);
       notifyListeners();
