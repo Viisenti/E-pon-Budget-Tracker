@@ -10,6 +10,7 @@ import 'widgets/app_header.dart';
 import 'widgets/bottom_navigation.dart';
 import 'providers/budget_provider.dart';
 import 'services/supabase_service.dart';
+import 'auth_wrapper.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -50,7 +51,7 @@ class BudgetsApp extends StatelessWidget {
             bodyColor: Colors.black87,
           ),
         ),
-        home: const BudgetsHomeScreen(),
+        home: const AuthWrapper(),
       ),
     );
   }
