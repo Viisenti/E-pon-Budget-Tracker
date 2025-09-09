@@ -10,6 +10,7 @@ import 'dart:io';
 import 'dart:math' as math;
 import '../providers/budget_provider.dart';
 import '../models/expense.dart';
+import '../models/budget.dart';
 import '../models/category.dart' as app_models;
 
 class InsightsScreen extends StatefulWidget {
@@ -22,8 +23,6 @@ class InsightsScreen extends StatefulWidget {
 class _InsightsScreenState extends State<InsightsScreen> {
   String _selectedTimeframe = 'Monthly';
   final List<String> _timeframes = ['Weekly', 'Monthly', 'Yearly'];
-  final PageController _pageController = PageController();
-  int _currentChartIndex = 0;
   
   @override
   Widget build(BuildContext context) {
@@ -45,13 +44,25 @@ class _InsightsScreenState extends State<InsightsScreen> {
             SliverToBoxAdapter(child: _buildTimeframeSelector()),
             SliverToBoxAdapter(child: const SizedBox(height: 20)),
             
-            // Charts Carousel
-            SliverToBoxAdapter(child: _buildChartsCarousel(analytics, budgetProvider)),
+            // Spending by Category (Pie Chart)
+            SliverToBoxAdapter(child: _buildSpendingByCategorySection(analytics)),
             SliverToBoxAdapter(child: const SizedBox(height: 20)),
             
-            // Chart Page Indicators
-            SliverToBoxAdapter(child: _buildPageIndicators()),
-            SliverToBoxAdapter(child: const SizedBox(height: 30)),
+            // Top 5 Expense Categories
+            SliverToBoxAdapter(child: _buildTopCategoriesSection(analytics)),
+            SliverToBoxAdapter(child: const SizedBox(height: 20)),
+            
+            // Monthly Spending Trend
+            SliverToBoxAdapter(child: _buildSpendingTrendSection(analytics, budgetProvider)),
+            SliverToBoxAdapter(child: const SizedBox(height: 20)),
+            
+            // Budget vs Actual Comparison
+            SliverToBoxAdapter(child: _buildBudgetComparisonSection(analytics)),
+            SliverToBoxAdapter(child: const SizedBox(height: 20)),
+            
+            // Recurring vs One-time Expenses
+            SliverToBoxAdapter(child: _buildRecurringExpensesSection(analytics)),
+            SliverToBoxAdapter(child: const SizedBox(height: 20)),
             
             // Daily/Weekly Averages
             SliverToBoxAdapter(child: _buildAveragesSection(analytics)),
@@ -188,126 +199,6 @@ class _InsightsScreenState extends State<InsightsScreen> {
         .toList();
   }
 
-  Widget _buildChartsCarousel(AnalyticsData analytics, BudgetProvider provider) {
-    final charts = [
-      _buildCarouselChart(
-        'Spending by Category',
-        _buildSpendingByCategoryChart(analytics),
-        'Pie chart showing expenses by category with percentages',
-      ),
-      _buildCarouselChart(
-        'Top Expense Categories',
-        _buildTopCategoriesChart(analytics),
-        'Ranked list of your highest spending categories',
-      ),
-      _buildCarouselChart(
-        'Monthly Spending Trend',
-        _buildSpendingTrendChart(analytics),
-        'Line chart showing spending patterns over time',
-      ),
-      _buildCarouselChart(
-        'Budget vs Actual',
-        _buildBudgetComparisonChart(analytics),
-        'Progress toward your budget goals',
-      ),
-      _buildCarouselChart(
-        'Recurring vs One-Time',
-        _buildRecurringExpensesChart(analytics),
-        'Breakdown of recurring and one-time expenses',
-      ),
-    ];
-
-    return SizedBox(
-      height: 400,
-      child: PageView.builder(
-        controller: _pageController,
-        onPageChanged: (index) {
-          setState(() {
-            _currentChartIndex = index;
-          });
-        },
-        itemCount: charts.length,
-        itemBuilder: (context, index) {
-          return Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: charts[index],
-          );
-        },
-      ),
-    );
-  }
-
-  Widget _buildCarouselChart(String title, Widget chart, String description) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 4),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.08),
-            blurRadius: 12,
-            offset: const Offset(0, 6),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.grey[800],
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  description,
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey[600],
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-              child: chart,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPageIndicators() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: List.generate(5, (index) {
-        return Container(
-          margin: const EdgeInsets.symmetric(horizontal: 4),
-          width: _currentChartIndex == index ? 24 : 8,
-          height: 8,
-          decoration: BoxDecoration(
-            color: _currentChartIndex == index 
-                ? const Color(0xFF0CAF60)
-                : Colors.grey[300],
-            borderRadius: BorderRadius.circular(4),
-          ),
-        );
-      }),
-    );
-  }
-
   Widget _buildTotalSpendingSection(AnalyticsData analytics) {
     final progressValue = analytics.budgetProgress.clamp(0.0, 1.0);
     final progressColor = analytics.isOverBudget ? Colors.red : const Color(0xFF0CAF60);
@@ -427,19 +318,9 @@ class _InsightsScreenState extends State<InsightsScreen> {
     );
   }
 
-  Widget _buildSpendingByCategoryChart(AnalyticsData analytics) {
+  Widget _buildSpendingByCategorySection(AnalyticsData analytics) {
     if (analytics.sortedCategories.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.pie_chart, size: 48, color: Colors.grey[400]),
-            const SizedBox(height: 16),
-            Text('No spending data available', 
-                 style: TextStyle(color: Colors.grey[600])),
-          ],
-        ),
-      );
+      return _buildEmptyState('No spending data available');
     }
 
     // Take top 5 categories for pie chart
@@ -459,472 +340,121 @@ class _InsightsScreenState extends State<InsightsScreen> {
       const Color(0xFF607D8B),
     ];
 
-    return Row(
-      children: [
-        Expanded(
-          flex: 2,
-          child: PieChart(
-            PieChartData(
-              sectionsSpace: 2,
-              centerSpaceRadius: 30,
-              sections: topCategories.asMap().entries.map((entry) {
-                final index = entry.key;
-                final data = entry.value;
-                final percentage = (data.value / analytics.totalSpent * 100);
-                
-                return PieChartSectionData(
-                  color: colors[index % colors.length],
-                  value: data.value,
-                  title: '${percentage.toStringAsFixed(1)}%',
-                  radius: 50,
-                  titleStyle: const TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                );
-              }).toList(),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            '1. Spending by Category',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Colors.grey[800],
             ),
           ),
-        ),
-        const SizedBox(width: 16),
-        Expanded(
-          flex: 1,
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: topCategories.asMap().entries.map((entry) {
-              final index = entry.key;
-              final data = entry.value;
-              final categoryName = data.key == 'others' 
-                  ? 'Others' 
-                  : analytics.categoryNames[data.key] ?? 'Unknown';
-              
-              return Padding(
-                padding: const EdgeInsets.symmetric(vertical: 3),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 10,
-                      height: 10,
-                      decoration: BoxDecoration(
-                        color: colors[index % colors.length],
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            categoryName,
-                            style: const TextStyle(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                            ),
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                          Text(
-                            '₱${_formatCurrency(data.value)}',
-                            style: TextStyle(
-                              fontSize: 9,
-                              color: Colors.grey[600],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
+          const SizedBox(height: 16),
+          Container(
+            height: 300,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(16),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.05),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
                 ),
-              );
-            }).toList(),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildTopCategoriesChart(AnalyticsData analytics) {
-    if (analytics.sortedCategories.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.list_alt, size: 48, color: Colors.grey[400]),
-            const SizedBox(height: 16),
-            Text('No expense categories available', 
-                 style: TextStyle(color: Colors.grey[600])),
-          ],
-        ),
-      );
-    }
-
-    final topCategories = analytics.sortedCategories.take(5).toList();
-
-    return Column(
-      children: topCategories.asMap().entries.map((entry) {
-        final index = entry.key;
-        final data = entry.value;
-        final categoryName = analytics.categoryNames[data.key] ?? 'Unknown';
-        final percentage = (data.value / analytics.totalSpent * 100);
-        
-        return Padding(
-          padding: EdgeInsets.only(bottom: index < topCategories.length - 1 ? 16 : 0),
-          child: Row(
-            children: [
-              Container(
-                width: 32,
-                height: 32,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF0CAF60).withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Center(
-                  child: Text(
-                    '${index + 1}',
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF0CAF60),
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      categoryName,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                    Text(
-                      '₱${_formatCurrency(data.value)} • ${percentage.toStringAsFixed(1)}% of total',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey[600],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        );
-      }).toList(),
-    );
-  }
-
-  Widget _buildSpendingTrendChart(AnalyticsData analytics) {
-    if (analytics.monthlyTrendData.isEmpty) {
-      return Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.trending_up, size: 48, color: Colors.grey[400]),
-            const SizedBox(height: 16),
-            Text('No trend data available', 
-                 style: TextStyle(color: Colors.grey[600])),
-          ],
-        ),
-      );
-    }
-
-    final maxAmount = analytics.monthlyTrendData.map((e) => e.amount).reduce(math.max);
-    final maxY = maxAmount > 0 ? maxAmount : 1000.0;
-
-    return LineChart(
-      LineChartData(
-        gridData: FlGridData(
-          show: true,
-          drawHorizontalLine: true,
-          drawVerticalLine: false,
-          horizontalInterval: maxY / 4,
-          getDrawingHorizontalLine: (value) {
-            return FlLine(
-              color: Colors.grey[300]!,
-              strokeWidth: 1,
-            );
-          },
-        ),
-        titlesData: FlTitlesData(
-          show: true,
-          rightTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-          topTitles: const AxisTitles(sideTitles: SideTitles(showTitles: false)),
-          bottomTitles: AxisTitles(
-            sideTitles: SideTitles(
-              showTitles: true,
-              reservedSize: 30,
-              interval: 1,
-              getTitlesWidget: (double value, TitleMeta meta) {
-                final index = value.toInt();
-                if (index >= 0 && index < analytics.monthlyTrendData.length) {
-                  return SideTitleWidget(
-                    axisSide: meta.axisSide,
-                    child: Text(
-                      analytics.monthlyTrendData[index].month,
-                      style: TextStyle(
-                        color: Colors.grey[600],
-                        fontWeight: FontWeight.bold,
-                        fontSize: 10,
-                      ),
-                    ),
-                  );
-                }
-                return Container();
-              },
-            ),
-          ),
-          leftTitles: AxisTitles(
-            sideTitles: SideTitles(
-              showTitles: true,
-              interval: maxY / 4,
-              reservedSize: 50,
-              getTitlesWidget: (double value, TitleMeta meta) {
-                return SideTitleWidget(
-                  axisSide: meta.axisSide,
-                  child: Text(
-                    '₱${_formatCurrency(value)}',
-                    style: TextStyle(
-                      color: Colors.grey[600],
-                      fontWeight: FontWeight.bold,
-                      fontSize: 9,
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-        ),
-        borderData: FlBorderData(
-          show: true,
-          border: Border.all(color: Colors.grey[300]!, width: 1),
-        ),
-        minX: 0,
-        maxX: analytics.monthlyTrendData.length.toDouble() - 1,
-        minY: 0,
-        maxY: maxY * 1.1,
-        lineBarsData: [
-          LineChartBarData(
-            spots: analytics.monthlyTrendData.asMap().entries.map((entry) {
-              return FlSpot(entry.key.toDouble(), entry.value.amount);
-            }).toList(),
-            isCurved: true,
-            gradient: LinearGradient(
-              colors: [
-                const Color(0xFF0CAF60),
-                const Color(0xFF0CAF60).withOpacity(0.3),
               ],
             ),
-            barWidth: 3,
-            isStrokeCapRound: true,
-            dotData: FlDotData(
-              show: true,
-              getDotPainter: (spot, percent, barData, index) {
-                return FlDotCirclePainter(
-                  radius: 3,
-                  color: const Color(0xFF0CAF60),
-                  strokeWidth: 2,
-                  strokeColor: Colors.white,
-                );
-              },
-            ),
-            belowBarData: BarAreaData(
-              show: true,
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  const Color(0xFF0CAF60).withOpacity(0.3),
-                  const Color(0xFF0CAF60).withOpacity(0.1),
-                ],
-              ),
+            child: Row(
+              children: [
+                Expanded(
+                  flex: 2,
+                  child: PieChart(
+                    PieChartData(
+                      sectionsSpace: 2,
+                      centerSpaceRadius: 40,
+                      sections: topCategories.asMap().entries.map((entry) {
+                        final index = entry.key;
+                        final data = entry.value;
+                        final percentage = (data.value / analytics.totalSpent * 100);
+                        
+                        return PieChartSectionData(
+                          color: colors[index % colors.length],
+                          value: data.value,
+                          title: '${percentage.toStringAsFixed(1)}%',
+                          radius: 60,
+                          titleStyle: const TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.white,
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  flex: 1,
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: topCategories.asMap().entries.map((entry) {
+                      final index = entry.key;
+                      final data = entry.value;
+                      final categoryName = data.key == 'others' 
+                          ? 'Others' 
+                          : analytics.categoryNames[data.key] ?? 'Unknown';
+                      
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 4),
+                        child: Row(
+                          children: [
+                            Container(
+                              width: 12,
+                              height: 12,
+                              decoration: BoxDecoration(
+                                color: colors[index % colors.length],
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    categoryName,
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  Text(
+                                    '₱${_formatCurrency(data.value)}',
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      color: Colors.grey[600],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ),
+              ],
             ),
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildBudgetComparisonChart(AnalyticsData analytics) {
-    return Column(
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              'Budget Progress',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w600,
-                color: Colors.grey[800],
-              ),
-            ),
-            Text(
-              '${(analytics.budgetProgress * 100).toStringAsFixed(0)}%',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: analytics.isOverBudget ? Colors.red : const Color(0xFF0CAF60),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 12),
-        LinearProgressIndicator(
-          value: analytics.budgetProgress.clamp(0.0, 1.0),
-          backgroundColor: Colors.grey[200],
-          valueColor: AlwaysStoppedAnimation<Color>(
-            analytics.isOverBudget ? Colors.red : const Color(0xFF0CAF60),
-          ),
-          minHeight: 8,
-        ),
-        const SizedBox(height: 20),
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Total Budget',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey[600],
-                  ),
-                ),
-                Text(
-                  '₱${_formatCurrency(analytics.totalBudget)}',
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
-            ),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(
-                  analytics.isOverBudget ? 'Over Budget' : 'Remaining',
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey[600],
-                  ),
-                ),
-                Text(
-                  '₱${_formatCurrency(analytics.remainingBudget.abs())}',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: analytics.isOverBudget ? Colors.red : const Color(0xFF0CAF60),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-        if (analytics.budgetProgress >= 0.8) ...[
-          const SizedBox(height: 16),
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: analytics.isOverBudget 
-                  ? Colors.red.withOpacity(0.1)
-                  : Colors.orange.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Row(
-              children: [
-                Icon(
-                  analytics.isOverBudget ? Icons.error : Icons.warning,
-                  color: analytics.isOverBudget ? Colors.red : Colors.orange,
-                  size: 20,
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    analytics.isOverBudget
-                        ? 'You\'ve exceeded your budget!'
-                        : 'You\'re close to your budget limit.',
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: analytics.isOverBudget ? Colors.red : Colors.orange,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ],
-    );
-  }
-
-  Widget _buildRecurringExpensesChart(AnalyticsData analytics) {
-    final total = analytics.recurringTotal + analytics.oneTimeTotal;
-    final recurringPercentage = total > 0 ? (analytics.recurringTotal / total * 100) : 0;
-    final oneTimePercentage = total > 0 ? (analytics.oneTimeTotal / total * 100) : 0;
-
-    return Column(
-      children: [
-        _buildExpenseTypeRow(
-          'Recurring Expenses',
-          analytics.recurringTotal,
-          recurringPercentage.toDouble(),
-          const Color(0xFF0CAF60),
-        ),
-        const SizedBox(height: 20),
-        _buildExpenseTypeRow(
-          'One-Time Expenses',
-          analytics.oneTimeTotal,
-          oneTimePercentage.toDouble(),
-          const Color(0xFF2196F3),
-        ),
-        const SizedBox(height: 20),
-        // Visual bar chart
-        Row(
-          children: [
-            if (recurringPercentage > 0)
-              Expanded(
-                flex: recurringPercentage.round(),
-                child: Container(
-                  height: 8,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF0CAF60),
-                    borderRadius: BorderRadius.only(
-                      topLeft: Radius.circular(4),
-                      bottomLeft: Radius.circular(4),
-                      topRight: Radius.circular(oneTimePercentage == 0 ? 4 : 0),
-                      bottomRight: Radius.circular(oneTimePercentage == 0 ? 4 : 0),
-                    ),
-                  ),
-                ),
-              ),
-            if (oneTimePercentage > 0)
-              Expanded(
-                flex: oneTimePercentage.round(),
-                child: Container(
-                  height: 8,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF2196F3),
-                    borderRadius: BorderRadius.only(
-                      topRight: Radius.circular(4),
-                      bottomRight: Radius.circular(4),
-                      topLeft: Radius.circular(recurringPercentage == 0 ? 4 : 0),
-                      bottomLeft: Radius.circular(recurringPercentage == 0 ? 4 : 0),
-                    ),
-                  ),
-                ),
-              ),
-          ],
-        ),
-      ],
     );
   }
 
@@ -1028,8 +558,7 @@ class _InsightsScreenState extends State<InsightsScreen> {
       return _buildEmptyState('No trend data available');
     }
 
-    final maxAmount = analytics.monthlyTrendData.map((e) => e.amount).reduce(math.max);
-    final maxY = maxAmount > 0 ? maxAmount : 1000.0;
+    final maxY = analytics.monthlyTrendData.map((e) => e.amount).reduce(math.max);
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
@@ -1359,14 +888,14 @@ class _InsightsScreenState extends State<InsightsScreen> {
                 _buildExpenseTypeRow(
                   'Recurring Expenses',
                   analytics.recurringTotal,
-                  recurringPercentage.toDouble(),
+                  recurringPercentage,
                   const Color(0xFF0CAF60),
                 ),
                 const SizedBox(height: 16),
                 _buildExpenseTypeRow(
                   'One-Time Expenses',
                   analytics.oneTimeTotal,
-                  oneTimePercentage.toDouble(),
+                  oneTimePercentage,
                   const Color(0xFF2196F3),
                 ),
               ],
@@ -1421,7 +950,7 @@ class _InsightsScreenState extends State<InsightsScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Daily/Weekly Averages',
+            '6. Daily/Weekly Averages',
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
@@ -1531,7 +1060,7 @@ class _InsightsScreenState extends State<InsightsScreen> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Cash Flow Snapshot',
+            '8. Cash Flow Snapshot',
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
@@ -1987,12 +1516,6 @@ class _InsightsScreenState extends State<InsightsScreen> {
     final formatter = NumberFormat('#,##0', 'en_US');
     return formatter.format(amount);
   }
-
-  @override
-  void dispose() {
-    _pageController.dispose();
-    super.dispose();
-  }
 }
 
 // Data classes for analytics
@@ -2037,3 +1560,4 @@ class MonthlyTrendData {
     required this.amount,
   });
 }
+
